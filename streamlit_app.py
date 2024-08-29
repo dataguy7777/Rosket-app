@@ -77,13 +77,16 @@ def simulate_flight(mass, thrust, drag_coefficient, cross_sectional_area, burn_t
     # Solve ODEs
     solution = solve_ivp(equations, t_span, initial_conditions, t_eval=t_eval)
 
+    # Filter out points where the rocket would be below ground level (z < 0)
+    z_filtered = np.maximum(solution.y[4], 0)
+
     thrust_active = solution.t <= burn_time
 
     return {
         "time": solution.t,
         "x": solution.y[0],
         "y": solution.y[2],
-        "z": solution.y[4],
+        "z": z_filtered,
         "vx": solution.y[1],
         "vy": solution.y[3],
         "vz": solution.y[5],
@@ -92,7 +95,7 @@ def simulate_flight(mass, thrust, drag_coefficient, cross_sectional_area, burn_t
 
 def plot_2d_path(data):
     """
-    Plots the 2D flight path with gradient color indicating thrust status.
+    Plots the 2D flight path with gradient color indicating thrust status and marks the launch and impact points.
 
     Args:
         data (dict): Dictionary containing time, x, y, z positions, and thrust status.
@@ -103,15 +106,25 @@ def plot_2d_path(data):
         color = plt.cm.autumn(data["thrust_active"][i])  # Red to yellow-white gradient
         plt.plot(data["x"][i:i+2], data["z"][i:i+2], color=color, lw=2)  # Plot x vs z for altitude
 
+    # Mark the launch point
+    plt.scatter(data["x"][0], data["z"][0], color='blue', label='Launch Point', zorder=5)
+    
+    # Mark the impact point (last point where z is zero or above)
+    impact_index = np.where(data["z"] == 0)[0][-1]
+    plt.scatter(data["x"][impact_index], data["z"][impact_index], color='red', label='Impact Point', zorder=5)
+
     plt.xlabel('Horizontal Distance (m)')
     plt.ylabel('Altitude (m)')
     plt.title('Rocket Flight Path in 2D')
+    plt.axhline(0, color='black', lw=1, ls='--')  # Ground level
+    plt.ylim(0, None)  # Ensure no plotting below ground level
     plt.grid(True)
+    plt.legend()
     st.pyplot(plt)
 
 def plot_3d_path(data):
     """
-    Plots the 3D flight path with gradient color indicating thrust status.
+    Plots the 3D flight path with gradient color indicating thrust status and marks the launch and impact points.
 
     Args:
         data (dict): Dictionary containing time, x, y, z positions, and thrust status.
@@ -119,7 +132,7 @@ def plot_3d_path(data):
     colors = ['rgba(255,0,0,{})'.format(t) if thrust else 'rgba(255,255,0,{})'.format(1-t) 
               for t, thrust in zip(np.linspace(0, 1, len(data["x"])), data["thrust_active"])]
     
-    trace = go.Scatter3d(
+    trace_path = go.Scatter3d(
         x=data["x"],
         y=data["y"],
         z=data["z"],
@@ -127,17 +140,36 @@ def plot_3d_path(data):
         line=dict(color=colors, width=5)
     )
 
+    trace_launch = go.Scatter3d(
+        x=[data["x"][0]],
+        y=[data["y"][0]],
+        z=[data["z"][0]],
+        mode='markers',
+        marker=dict(color='blue', size=5),
+        name='Launch Point'
+    )
+
+    impact_index = np.where(data["z"] == 0)[0][-1]
+    trace_impact = go.Scatter3d(
+        x=[data["x"][impact_index]],
+        y=[data["y"][impact_index]],
+        z=[data["z"][impact_index]],
+        mode='markers',
+        marker=dict(color='red', size=5),
+        name='Impact Point'
+    )
+
     layout = go.Layout(
         title='Rocket Flight Path in 3D',
         scene=dict(
             xaxis_title='X Axis (m)',
             yaxis_title='Y Axis (m)',
-            zaxis_title='Altitude (m)'
+            zaxis=dict(title='Altitude (m)', range=[0, max(data["z"]) + 100]),  # Ensure no plotting below ground level
         ),
         margin=dict(l=0, r=0, b=0, t=40)
     )
 
-    fig = go.Figure(data=[trace], layout=layout)
+    fig = go.Figure(data=[trace_path, trace_launch, trace_impact], layout=layout)
     st.plotly_chart(fig)
 
 def main():
@@ -152,7 +184,7 @@ def main():
     burn_time = st.sidebar.number_input("Burn Time (s)", min_value=0.0, max_value=100.0, value=10.0)
     initial_height = st.sidebar.number_input("Initial Height (m)", min_value=0.0, max_value=100000.0, value=0.0)
 
-    # Simulate the flight
+# Simulate the flight
     st.header("Flight Simulation")
     flight_data = simulate_flight(mass, thrust, drag_coefficient, cross_sectional_area, burn_time, initial_height)
 

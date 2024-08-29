@@ -33,7 +33,7 @@ def atmospheric_density(altitude):
 
 def simulate_flight(mass, thrust, drag_coefficient, cross_sectional_area, burn_time, initial_height):
     """
-    Simulates the rocket flight based on input parameters, accounting for atmospheric density.
+    Simulates the rocket flight based on input parameters, accounting for atmospheric density and gravity.
 
     Args:
         mass (float): Mass of the rocket in kg.
@@ -50,7 +50,7 @@ def simulate_flight(mass, thrust, drag_coefficient, cross_sectional_area, burn_t
 
     def equations(t, y):
         x, vx, y_pos, vy, z, vz = y
-        altitude = y_pos + initial_height  # Calculate current altitude
+        altitude = z  # Altitude is directly the z-axis value
         density = atmospheric_density(altitude)
         v = np.sqrt(vx**2 + vy**2 + vz**2)
         drag = 0.5 * density * drag_coefficient * cross_sectional_area * v**2
@@ -58,16 +58,17 @@ def simulate_flight(mass, thrust, drag_coefficient, cross_sectional_area, burn_t
         # Thrust is applied only during the burn time
         if t <= burn_time:
             ax = (thrust / mass) - (drag / mass)
+            az = (thrust / mass) - g - (drag / mass)
         else:
             ax = -drag / mass
+            az = -g - (drag / mass)
 
-        ay = -g
-        az = 0  # No lateral forces in this simple model
+        ay = 0  # Assuming no lateral forces affecting y direction
 
         return [vx, ax, vy, ay, vz, az]
 
     # Initial conditions: [x0, vx0, y0, vy0, z0, vz0]
-    initial_conditions = [0, 0, initial_height, 0, 0, 0]
+    initial_conditions = [0, 0, 0, 0, initial_height, 0]
 
     # Time array
     t_span = (0, 500)  # Simulate for 500 seconds
@@ -100,7 +101,7 @@ def plot_2d_path(data):
     
     for i in range(len(data["x"]) - 1):
         color = plt.cm.autumn(data["thrust_active"][i])  # Red to yellow-white gradient
-        plt.plot(data["x"][i:i+2], data["y"][i:i+2], color=color, lw=2)
+        plt.plot(data["x"][i:i+2], data["z"][i:i+2], color=color, lw=2)  # Plot x vs z for altitude
 
     plt.xlabel('Horizontal Distance (m)')
     plt.ylabel('Altitude (m)')
@@ -120,8 +121,8 @@ def plot_3d_path(data):
     
     trace = go.Scatter3d(
         x=data["x"],
-        y=data["z"],
-        z=data["y"],
+        y=data["y"],
+        z=data["z"],
         mode='lines',
         line=dict(color=colors, width=5)
     )
@@ -130,7 +131,7 @@ def plot_3d_path(data):
         title='Rocket Flight Path in 3D',
         scene=dict(
             xaxis_title='X Axis (m)',
-            yaxis_title='Z Axis (m)',
+            yaxis_title='Y Axis (m)',
             zaxis_title='Altitude (m)'
         ),
         margin=dict(l=0, r=0, b=0, t=40)

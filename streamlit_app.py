@@ -1,6 +1,6 @@
 import streamlit as st
 from rocket_simulation import rocket_simulation_page
-from plane_simulation import plane_simulation_page
+from plane_simulation import plane_simulation
 from jet_trajectory_simulation import jet_trajectory_page  # Import the jet trajectory page
 
 # Sidebar navigation

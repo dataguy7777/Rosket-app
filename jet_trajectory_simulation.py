@@ -117,7 +117,7 @@ def jet_trajectory_page():
     col1, col2 = st.columns(2)
 
     with col1:
-        start_address = st.text_input("Enter Start Address", "New York, USA")
+        start_address = st.text_input("Enter Start Address", "New York, USA", key="start_address")
         start_coords = geocode_address(start_address)
         if start_coords:
             st.write(f"Start Coordinates: {start_coords}")
@@ -125,7 +125,7 @@ def jet_trajectory_page():
             st.error("Start address could not be geocoded.")
 
     with col2:
-        end_address = st.text_input("Enter Destination Address", "Los Angeles, USA")
+        end_address = st.text_input("Enter Destination Address", "Los Angeles, USA", key="end_address")
         end_coords = geocode_address(end_address)
         if end_coords:
             st.write(f"Destination Coordinates: {end_coords}")
@@ -135,15 +135,15 @@ def jet_trajectory_page():
     if start_coords and end_coords:
         col1, col2 = st.columns(2)
         with col1:
-            speed = st.number_input("Jet Speed (km/h)", min_value=500, max_value=1500, value=900)
+            speed = st.number_input("Jet Speed (km/h)", min_value=500, max_value=1500, value=900, key="jet_speed")
         with col2:
-            flight_time = st.number_input("Flight Time (seconds)", min_value=60, max_value=10000, value=3600)
+            flight_time = st.number_input("Flight Time (seconds)", min_value=60, max_value=10000, value=3600, key="flight_time")
 
         # Generate the realistic jet trajectory
         trajectory_data = generate_realistic_trajectory(start_coords, end_coords, flight_time, speed)
 
         # Flight Simulation Button
-        if st.button("Start Jet Simulation"):
+        if st.button("Start Jet Simulation", key="start_simulation"):
             st.write(f"Simulating jet with speed: {speed} km/h and flight time: {flight_time} seconds.")
 
             # Set up placeholders for live updates
@@ -151,7 +151,7 @@ def jet_trajectory_page():
             timestamp_text = st.empty()
 
             # Simulate live flight frame by frame
-            sim_speed = st.slider("Simulation Speed Multiplier", 1, 100, 10)
+            sim_speed = st.slider("Simulation Speed Multiplier", 1, 100, 10, key="sim_speed")
             total_frames = len(trajectory_data)
             for i in range(total_frames):
                 # Update the 3D map with the current frame

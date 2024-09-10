@@ -56,7 +56,45 @@ def generate_realistic_trajectory(start_coords, end_coords, total_time, speed):
         'time_step': time_steps
     })
 
-def plot_jet_trajectory(df, frame_idx=None):
+def plot_jet_trajectory_2d(df, frame_idx=None):
+    """
+    Plot a 2D jet trajectory map.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with jet trajectory data (latitude, longitude, altitude)
+        frame_idx (int): Index of the current frame to display (for live simulation)
+    
+    Returns:
+        plotly.graph_objs.Figure: 2D plot with jet trajectory.
+    """
+    if frame_idx is None:
+        # Full trajectory
+        lat = df['latitude']
+        lon = df['longitude']
+    else:
+        # Display up to the current frame index for live simulation
+        lat = df['latitude'][:frame_idx]
+        lon = df['longitude'][:frame_idx]
+
+    fig = go.Figure(data=go.Scattergeo(
+        lon=lon,
+        lat=lat,
+        mode='markers+lines',
+        marker=dict(
+            size=5,
+            color='blue'
+        ),
+        line=dict(width=2, color='blue'),
+    ))
+
+    fig.update_layout(
+        title="Jet Trajectory in 2D",
+        geo_scope='world',  # Limit map scope to the entire world
+        height=600
+    )
+    return fig
+
+def plot_jet_trajectory_3d(df, frame_idx=None):
     """
     Plot jet trajectory on a 3D world map using Plotly.
     
@@ -78,10 +116,11 @@ def plot_jet_trajectory(df, frame_idx=None):
         lon = df['longitude'][:frame_idx]
         alt = df['altitude'][:frame_idx]
 
-    fig = go.Figure(data=go.Scattergeo(
-        lon=lon,
-        lat=lat,
-        mode='markers+lines',
+    fig = go.Figure(data=go.Scatter3d(
+        x=lon,
+        y=lat,
+        z=alt,
+        mode='lines+markers',
         marker=dict(
             size=5,
             color=alt,  # Color by altitude
@@ -93,16 +132,13 @@ def plot_jet_trajectory(df, frame_idx=None):
     ))
 
     fig.update_layout(
-        geo=dict(
-            projection_type="orthographic",
-            showcoastlines=True,
-            coastlinecolor="Black",
-            showland=True,
-            landcolor="rgb(243, 243, 243)",
-            showocean=True,
-            oceancolor="rgb(204, 204, 255)",
+        title="Jet Trajectory in 3D",
+        scene=dict(
+            xaxis_title='Longitude',
+            yaxis_title='Latitude',
+            zaxis_title='Altitude (m)',
+            aspectmode='auto'
         ),
-        title="Jet Trajectory on 3D World Map",
         height=600
     )
     return fig
@@ -111,7 +147,7 @@ def jet_trajectory_page():
     """
     Jet Trajectory Simulation page in the Streamlit app.
     """
-    st.title("Jet Trajectory Simulation on 3D World Map")
+    st.title("Jet Trajectory Simulation on 2D and 3D World Map")
 
     # Collect user inputs for start and destination addresses and flight parameters
     col1, col2 = st.columns(2)
@@ -147,16 +183,21 @@ def jet_trajectory_page():
             st.write(f"Simulating jet with speed: {speed} km/h and flight time: {flight_time} seconds.")
 
             # Set up placeholders for live updates
-            trajectory_plot = st.empty()
+            trajectory_plot_2d = st.empty()
+            trajectory_plot_3d = st.empty()
             timestamp_text = st.empty()
 
             # Simulate live flight frame by frame
             sim_speed = st.slider("Simulation Speed Multiplier", 1, 100, 10, key="sim_speed")
             total_frames = len(trajectory_data)
             for i in range(total_frames):
+                # Update the 2D map with the current frame
+                fig_2d = plot_jet_trajectory_2d(trajectory_data, i)
+                trajectory_plot_2d.plotly_chart(fig_2d)
+
                 # Update the 3D map with the current frame
-                fig = plot_jet_trajectory(trajectory_data, i)
-                trajectory_plot.plotly_chart(fig)
+                fig_3d = plot_jet_trajectory_3d(trajectory_data, i)
+                trajectory_plot_3d.plotly_chart(fig_3d)
 
                 # Update the timestamp
                 current_time = trajectory_data['time_step'][i] * sim_speed

@@ -84,7 +84,7 @@ def simulate_plane_and_missile(plane_params, missile_params, target_params):
                     "intercepted": True,
                     "interception_time": time[j]
                 }
-    
+
     # If missile misses
     return {
         "plane_position": plane_position,
@@ -183,9 +183,7 @@ def plane_simulation_page():
 
     # Run simulation
     st.header("Simulation Results")
-    sim_data = simulate_plane_and_missile(plane_params
-
-sim_data = simulate_plane_and_missile(plane_params, missile_params, target_params)
+    sim_data = simulate_plane_and_missile(plane_params, missile_params, target_params)
 
     if sim_data['intercepted']:
         st.success(f"Target intercepted at time {sim_data['interception_time']:.2f} seconds!")

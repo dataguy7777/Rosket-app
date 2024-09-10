@@ -3,14 +3,15 @@ import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
 from geopy.geocoders import Nominatim
+import time
 
 def geocode_address(address):
     """
     Convert an address into geographical coordinates (latitude, longitude).
-
+    
     Args:
         address (str): The address to geocode.
-
+        
     Returns:
         tuple: (latitude, longitude) or None if not found.
     """
@@ -24,13 +25,13 @@ def geocode_address(address):
 def generate_realistic_trajectory(start_coords, end_coords, total_time, speed):
     """
     Simulate a realistic jet trajectory between two points (start and end).
-
+    
     Args:
         start_coords (tuple): (latitude, longitude) for the start point.
         end_coords (tuple): (latitude, longitude) for the end point.
         total_time (float): Total flight time in seconds.
         speed (float): Jet speed in km/h.
-
+    
     Returns:
         pd.DataFrame: A DataFrame containing the simulated latitude, longitude, and altitude.
     """
@@ -51,26 +52,39 @@ def generate_realistic_trajectory(start_coords, end_coords, total_time, speed):
     return pd.DataFrame({
         'latitude': latitudes,
         'longitude': longitudes,
-        'altitude': altitudes
+        'altitude': altitudes,
+        'time_step': time_steps
     })
 
-def plot_jet_trajectory(df):
+def plot_jet_trajectory(df, frame_idx=None):
     """
     Plot jet trajectory on a 3D world map using Plotly.
-
+    
     Args:
         df (pd.DataFrame): DataFrame with jet trajectory data (latitude, longitude, altitude)
-
+        frame_idx (int): Index of the current frame to display (for live simulation)
+    
     Returns:
         plotly.graph_objs.Figure: 3D scatter plot with jet trajectory.
     """
+    if frame_idx is None:
+        # Full trajectory
+        lat = df['latitude']
+        lon = df['longitude']
+        alt = df['altitude']
+    else:
+        # Display up to the current frame index for live simulation
+        lat = df['latitude'][:frame_idx]
+        lon = df['longitude'][:frame_idx]
+        alt = df['altitude'][:frame_idx]
+
     fig = go.Figure(data=go.Scattergeo(
-        lon=df['longitude'],
-        lat=df['latitude'],
+        lon=lon,
+        lat=lat,
         mode='markers+lines',
         marker=dict(
             size=5,
-            color=df['altitude'],  # Color by altitude
+            color=alt,  # Color by altitude
             colorscale='Viridis',
             showscale=True,
             colorbar=dict(title="Altitude (m)")
@@ -124,21 +138,34 @@ def jet_trajectory_page():
             speed = st.number_input("Jet Speed (km/h)", min_value=500, max_value=1500, value=900)
         with col2:
             flight_time = st.number_input("Flight Time (seconds)", min_value=60, max_value=10000, value=3600)
-        
-        # Generate and plot the realistic jet trajectory
-        st.write(f"Simulating jet with speed: {speed} km/h and flight time: {flight_time} seconds.")
 
+        # Generate the realistic jet trajectory
         trajectory_data = generate_realistic_trajectory(start_coords, end_coords, flight_time, speed)
 
-        # Plot the jet trajectory
-        jet_trajectory_fig = plot_jet_trajectory(trajectory_data)
-        st.plotly_chart(jet_trajectory_fig)
+        # Flight Simulation Button
+        if st.button("Start Jet Simulation"):
+            st.write(f"Simulating jet with speed: {speed} km/h and flight time: {flight_time} seconds.")
 
-        # Display a slider to control simulation speed (real-time or faster)
-        sim_speed = st.slider("Simulation Speed Multiplier", 1, 100, 10)
-        st.write(f"Simulation running at {sim_speed}x normal speed.")
-        
-        # GIF or video simulation can be implemented here if required.
+            # Set up placeholders for live updates
+            trajectory_plot = st.empty()
+            timestamp_text = st.empty()
+
+            # Simulate live flight frame by frame
+            sim_speed = st.slider("Simulation Speed Multiplier", 1, 100, 10)
+            total_frames = len(trajectory_data)
+            for i in range(total_frames):
+                # Update the 3D map with the current frame
+                fig = plot_jet_trajectory(trajectory_data, i)
+                trajectory_plot.plotly_chart(fig)
+
+                # Update the timestamp
+                current_time = trajectory_data['time_step'][i] * sim_speed
+                timestamp_text.markdown(f"**Flight Time:** {current_time:.2f} seconds")
+
+                # Simulate real-time delay (adjusted by sim_speed)
+                time.sleep(0.1 / sim_speed)  # 0.1 seconds per frame, adjust by sim_speed
+
+            st.success("Flight simulation completed!")
 
 # Run the jet trajectory page
 jet_trajectory_page()
